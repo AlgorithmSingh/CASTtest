@@ -25,12 +25,16 @@ Run experiment:
 
 ```bash
 uv run python -m cli experiment
+# or
+uv run python main.py experiment
 ```
 
 Query a repository:
 
 ```bash
 uv run python -m cli ask --repo /path/to/repo --query "how is auth signature verified" --strategy cast --top-k 5
+# or
+uv run python main.py ask --repo /path/to/repo --query "how is auth signature verified" --strategy cast --top-k 5
 ```
 
 JSON output:
@@ -42,6 +46,7 @@ uv run python -m cli ask --repo /path/to/repo --query "cache embeddings" --strat
 ## Files
 
 - `cli.py` — CLI implementation (`experiment` and `ask` commands).
+- `main.py` — compatibility wrapper that delegates to `cli.main()`.
 - `cast_rag.py` — chunkers, repository loader, BM25 retrieval, experiment helpers.
 - `test_cast_rag.py` — unit tests including repository query flow.
 - `pyproject.toml` — project metadata and script entrypoint.
