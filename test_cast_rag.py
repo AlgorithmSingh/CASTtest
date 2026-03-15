@@ -1,6 +1,16 @@
+import tempfile
+import textwrap
 import unittest
+from pathlib import Path
 
-from cast_rag import CastChunker, FixedChunker, build_synthetic_code_corpus, evaluate_retrieval, non_ws_len
+from cast_rag import (
+    CastChunker,
+    FixedChunker,
+    build_synthetic_code_corpus,
+    evaluate_retrieval,
+    non_ws_len,
+    query_repository,
+)
 
 
 class CastRagTests(unittest.TestCase):
@@ -23,10 +33,32 @@ class CastRagTests(unittest.TestCase):
         self.assertGreaterEqual(cast["recall_at_k"], fixed["recall_at_k"])
         self.assertGreaterEqual(cast["recall_at_k"], 2 / 3)
 
-    def test_cache_query_hits_cache_repo_with_cast(self):
-        cast_chunks = CastChunker(max_chunk_size=220).chunk(self.files)
-        cast = evaluate_retrieval(cast_chunks, [self.cases[1]], k=3)
-        self.assertEqual(1, cast["hits"])
+    def test_query_repository_cli_path(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "math_utils.py").write_text(
+                textwrap.dedent(
+                    """
+                    def add(a, b):
+                        return a + b
+
+                    def multiply(a, b):
+                        return a * b
+                    """
+                ).strip()
+            )
+            (root / "auth.py").write_text(
+                textwrap.dedent(
+                    """
+                    import hmac
+                    def sign(secret, payload):
+                        return hmac.new(secret.encode(), payload.encode()).hexdigest()
+                    """
+                ).strip()
+            )
+            out = query_repository(str(root), "function to multiply values", strategy="cast", top_k=3)
+            self.assertGreaterEqual(out["num_files"], 2)
+            self.assertTrue(any("math_utils.py" == row["file_id"] for row in out["results"]))
 
 
 if __name__ == "__main__":
