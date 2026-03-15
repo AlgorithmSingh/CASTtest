@@ -1,0 +1,10 @@
+[project]
+name = "cast-rag-cli"
+version = "0.1.0"
+description = "Minimal cAST-style repository RAG CLI"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.uv]
+package = false
