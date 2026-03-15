@@ -24,24 +24,25 @@ uv sync
 Run experiment:
 
 ```bash
-uv run python main.py experiment
+uv run python -m cli experiment
 ```
 
 Query a repository:
 
 ```bash
-uv run python main.py ask --repo /path/to/repo --query "how is auth signature verified" --strategy cast --top-k 5
+uv run python -m cli ask --repo /path/to/repo --query "how is auth signature verified" --strategy cast --top-k 5
 ```
 
 JSON output:
 
 ```bash
-uv run python main.py ask --repo /path/to/repo --query "cache embeddings" --strategy cast --top-k 5 --json
+uv run python -m cli ask --repo /path/to/repo --query "cache embeddings" --strategy cast --top-k 5 --json
 ```
 
 ## Files
 
-- `main.py` — CLI entrypoint (`experiment` and `ask` commands).
+- `cli.py` — CLI implementation (`experiment` and `ask` commands).
+- `main.py` — tiny wrapper that calls `cli.main()` for compatibility.
 - `cast_rag.py` — chunkers, repository loader, BM25 retrieval, experiment helpers.
 - `test_cast_rag.py` — unit tests including repository query flow.
 - `pyproject.toml` — project metadata and script entrypoint.
