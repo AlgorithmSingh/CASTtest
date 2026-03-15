@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
-from cast_rag import query_repository, run_experiment
+from cast_rag import generate_answer, query_repository, run_experiment
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -21,6 +22,9 @@ def build_parser() -> argparse.ArgumentParser:
     ask.add_argument("--strategy", choices=["cast", "fixed"], default="cast", help="Chunking strategy")
     ask.add_argument("--top-k", type=int, default=5, help="Number of chunks to return")
     ask.add_argument("--json", action="store_true", help="Emit JSON output")
+    ask.add_argument("--answer", action="store_true", help="Generate an answer using Gemini")
+    ask.add_argument("--gemini-key", default=None, help="Gemini API key (or set GEMINI_API_KEY env var)")
+    ask.add_argument("--model", default="gemini-2.0-flash", help="Gemini model to use (default: gemini-2.0-flash)")
     ask.set_defaults(func=cmd_ask)
     return parser
 
@@ -37,6 +41,22 @@ def cmd_ask(args: argparse.Namespace) -> int:
         return 2
 
     result = query_repository(str(repo), args.query, strategy=args.strategy, top_k=args.top_k)
+
+    if args.answer:
+        api_key = args.gemini_key or os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            print("error: --gemini-key or GEMINI_API_KEY env var required for --answer", file=sys.stderr)
+            return 2
+        if not result["results"]:
+            print("No relevant chunks found to answer from.")
+            return 0
+        answer = generate_answer(args.query, result["results"], api_key, model=args.model)
+        if args.json:
+            result["answer"] = answer
+            print(json.dumps(result, indent=2))
+        else:
+            print(answer)
+        return 0
 
     if args.json:
         print(json.dumps(result, indent=2))

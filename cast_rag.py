@@ -314,6 +314,30 @@ def query_repository(repo_path: str, query: str, strategy: str = "cast", top_k: 
     }
 
 
+def generate_answer(query: str, chunks: List[Dict[str, object]], api_key: str, model: str = "gemini-2.0-flash") -> str:
+    """Send retrieved chunks + query to Gemini and return the generated answer."""
+    import google.generativeai as genai
+
+    genai.configure(api_key=api_key)
+
+    context_parts = []
+    for i, chunk in enumerate(chunks, 1):
+        context_parts.append(f"--- Chunk {i} (file: {chunk['file_id']}, score: {chunk['score']}) ---\n{chunk['text']}")
+    context = "\n\n".join(context_parts)
+
+    prompt = (
+        "You are a helpful code assistant. Use the following code chunks retrieved from a repository "
+        "to answer the user's question. Reference specific files and code when possible. "
+        "If the chunks don't contain enough information, say so.\n\n"
+        f"## Retrieved code chunks\n\n{context}\n\n"
+        f"## Question\n\n{query}"
+    )
+
+    client = genai.GenerativeModel(model)
+    response = client.generate_content(prompt)
+    return response.text
+
+
 def build_synthetic_code_corpus() -> Tuple[List[CodeFile], List[QueryCase]]:
     files = [
         CodeFile(
