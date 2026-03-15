@@ -1,52 +1,127 @@
 # cAST-style repository RAG CLI
 
-This repository now includes a real CLI so you can point at a local code repository and run retrieval with a cAST-style chunking pipeline.
+A code retrieval-augmented generation tool that uses **AST-aware chunking** and **hybrid search** (FAISS vector + BM25 + RRF fusion) to answer questions about any codebase.
 
-## What you can do
+## How it works
 
-- Run a built-in synthetic experiment.
-- Query any local repository path with:
-  - `cast` strategy (cAST-inspired):
-    - Python files: AST split-then-merge chunking with a non-whitespace char budget.
-    - Non-Python text/code files: fallback chunking.
-  - `fixed` strategy (baseline): fixed line chunks.
+1. **Ingest** — Clone a repo (or point to a local one), chunk source files using cAST (AST split-then-merge for Python, line-based fallback for other languages), embed chunks with `all-MiniLM-L6-v2`, and save a FAISS HNSW index to disk.
+2. **Ask** — Load a saved index and run hybrid retrieval: FAISS vector similarity + BM25 keyword search, fused with Reciprocal Rank Fusion (RRF). Optionally generate an answer with Gemini.
 
-## Setup (`uv`)
+No compilation or build step is needed — AST parsing reads raw source text directly.
+
+## Setup
 
 ```bash
 uv sync
 ```
 
-(Uses `pyproject.toml` with no external runtime dependencies.)
-
 ## CLI usage
 
-Run experiment:
+### Ingest a repository
+
+From a git URL (clones automatically):
 
 ```bash
-uv run python -m cli experiment
-# or
+uv run python main.py ingest https://github.com/user/repo.git
+```
+
+From a local path:
+
+```bash
+uv run python main.py ingest /path/to/local/repo --name my-project
+```
+
+Options:
+- `--name` — Custom index name (default: derived from URL/path)
+- `--strategy` — `cast` (default) or `fixed`
+
+### Query a saved index (hybrid search)
+
+```bash
+uv run python main.py ask --index my-project --query "how does authentication work"
+```
+
+### Query a local repo directly (BM25 only, no index saved)
+
+```bash
+uv run python main.py ask --repo /path/to/repo --query "how is auth signature verified"
+```
+
+### Generate an answer with Gemini
+
+```bash
+export GEMINI_API_KEY=your-key-here
+uv run python main.py ask --index my-project --query "how does caching work" --answer
+```
+
+Or pass the key directly:
+
+```bash
+uv run python main.py ask --index my-project --query "how does caching work" --answer --gemini-key YOUR_KEY
+```
+
+### Manage indexes
+
+```bash
+# List all saved indexes
+uv run python main.py list
+
+# Delete an index
+uv run python main.py delete my-project
+```
+
+### Run the built-in experiment
+
+```bash
 uv run python main.py experiment
 ```
 
-Query a repository:
+### JSON output
+
+Add `--json` to any `ask` command:
 
 ```bash
-uv run python -m cli ask --repo /path/to/repo --query "how is auth signature verified" --strategy cast --top-k 5
-# or
-uv run python main.py ask --repo /path/to/repo --query "how is auth signature verified" --strategy cast --top-k 5
+uv run python main.py ask --index my-project --query "cache embeddings" --json
 ```
 
-JSON output:
+## Architecture
 
-```bash
-uv run python -m cli ask --repo /path/to/repo --query "cache embeddings" --strategy cast --top-k 5 --json
+```
+Git URL / Local Path
+    |
+    v
+git clone (if URL)
+    |
+    v
+load_repository() — walk files, filter by extension
+    |
+    v
+CastChunker (Python: AST split-then-merge) / FixedChunker (line-based)
+    |
+    v
+all-MiniLM-L6-v2 embeddings (local, no API key)
+    |
+    v
+FAISS HNSW index — saved to ~/.cast-rag/indexes/<name>/
+    |
+    v
+Hybrid search: FAISS vector + BM25 keyword, fused with RRF
+    |
+    v
+(optional) Gemini generates answer from top chunks
 ```
 
 ## Files
 
-- `cli.py` — CLI implementation (`experiment` and `ask` commands).
-- `main.py` — compatibility wrapper that delegates to `cli.main()`.
-- `cast_rag.py` — chunkers, repository loader, BM25 retrieval, experiment helpers.
-- `test_cast_rag.py` — unit tests including repository query flow.
-- `pyproject.toml` — project metadata and script entrypoint.
+- `cast_rag.py` — Chunkers, repository loader, BM25 retrieval, ingest/query pipeline, Gemini answer generation.
+- `vector_store.py` — FAISS HNSW index, sentence-transformers embeddings, hybrid RRF search.
+- `cli.py` — CLI commands: `ingest`, `ask`, `list`, `delete`, `experiment`.
+- `main.py` — Entrypoint that delegates to `cli.main()`.
+- `test_cast_rag.py` — Unit tests.
+- `pyproject.toml` — Project metadata and dependencies.
+
+## Dependencies
+
+- `sentence-transformers` — Local embeddings (all-MiniLM-L6-v2, 384-dim)
+- `faiss-cpu` — Vector similarity search (HNSW index)
+- `google-generativeai` — Gemini answer generation (optional, needs API key)

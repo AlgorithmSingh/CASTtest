@@ -4,7 +4,11 @@ version = "0.1.0"
 description = "Minimal cAST-style repository RAG CLI"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["google-generativeai>=0.8.0"]
+dependencies = [
+    "google-generativeai>=0.8.0",
+    "faiss-cpu>=1.7.0",
+    "sentence-transformers>=2.2.0",
+]
 
 [tool.uv]
 package = false

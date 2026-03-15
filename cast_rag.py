@@ -314,6 +314,119 @@ def query_repository(repo_path: str, query: str, strategy: str = "cast", top_k: 
     }
 
 
+INDEX_ROOT = Path.home() / ".cast-rag" / "indexes"
+REPO_ROOT = Path.home() / ".cast-rag" / "repos"
+
+
+def ingest_repository(
+    source: str,
+    name: str | None = None,
+    strategy: str = "cast",
+) -> Dict[str, object]:
+    """Clone (if git URL) or read a local repo, chunk it, embed it, and save a FAISS index.
+
+    Returns metadata about the ingested index.
+    """
+    import subprocess
+
+    from vector_store import EmbeddingModel, build_index
+
+    # Determine if source is a git URL or local path
+    is_url = source.startswith("http://") or source.startswith("https://") or source.startswith("git@")
+
+    if is_url:
+        if name is None:
+            # Derive name from URL: https://github.com/user/repo.git -> repo
+            name = source.rstrip("/").rsplit("/", 1)[-1].removesuffix(".git")
+        clone_dir = REPO_ROOT / name
+        if clone_dir.exists():
+            # Pull latest
+            subprocess.run(["git", "-C", str(clone_dir), "pull", "--ff-only"], check=False)
+        else:
+            clone_dir.parent.mkdir(parents=True, exist_ok=True)
+            subprocess.run(["git", "clone", source, str(clone_dir)], check=True)
+        repo_path = str(clone_dir)
+    else:
+        repo_path = str(Path(source).resolve())
+        if name is None:
+            name = Path(repo_path).name
+
+    # Load and chunk
+    chunks = build_chunks_for_repo(repo_path, strategy=strategy)
+    if not chunks:
+        raise ValueError(f"No chunks produced from {repo_path}")
+
+    # Embed and build FAISS index
+    print(f"Embedding {len(chunks)} chunks with all-MiniLM-L6-v2...")
+    embedder = EmbeddingModel()
+    vector_index, _ = build_index(chunks, embedder)
+
+    # Save index
+    index_dir = str(INDEX_ROOT / name)
+    vector_index.save(index_dir)
+
+    # Save metadata
+    import json as _json
+
+    meta = {
+        "name": name,
+        "source": source,
+        "repo_path": repo_path,
+        "strategy": strategy,
+        "num_files": len({c.file_id for c in chunks}),
+        "num_chunks": len(chunks),
+    }
+    (Path(index_dir) / "meta.json").write_text(_json.dumps(meta, indent=2))
+
+    return meta
+
+
+def query_index(
+    name: str,
+    query: str,
+    top_k: int = 5,
+) -> Dict[str, object]:
+    """Query a previously ingested index using hybrid search (vector + BM25 + RRF)."""
+    import json as _json
+
+    from vector_store import EmbeddingModel, VectorIndex, hybrid_search
+
+    index_dir = INDEX_ROOT / name
+    if not index_dir.exists():
+        raise ValueError(f"No index found for '{name}'. Run 'ingest' first.")
+
+    meta = _json.loads((index_dir / "meta.json").read_text())
+    vector_index = VectorIndex.load(str(index_dir))
+    embedder = EmbeddingModel()
+
+    results = hybrid_search(
+        query=query,
+        chunks=vector_index.chunks,
+        vector_index=vector_index,
+        embedder=embedder,
+        top_k=top_k,
+    )
+
+    return {
+        "query": query,
+        "index": name,
+        "strategy": meta.get("strategy", "cast"),
+        "num_files": meta.get("num_files", 0),
+        "num_chunks": meta.get("num_chunks", 0),
+        "retrieval": "hybrid (vector + BM25 + RRF)",
+        "results": [
+            {
+                "file_id": r.chunk.file_id,
+                "chunk_id": r.chunk.chunk_id,
+                "score": r.score,
+                "source": r.source,
+                "text": r.chunk.text,
+            }
+            for r in results
+        ],
+    }
+
+
 def generate_answer(query: str, chunks: List[Dict[str, object]], api_key: str, model: str = "gemini-2.0-flash") -> str:
     """Send retrieved chunks + query to Gemini and return the generated answer."""
     import google.generativeai as genai
