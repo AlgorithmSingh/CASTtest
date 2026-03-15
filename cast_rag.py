@@ -427,7 +427,7 @@ def query_index(
     }
 
 
-def generate_answer(query: str, chunks: List[Dict[str, object]], api_key: str, model: str = "gemini-2.0-flash") -> str:
+def generate_answer(query: str, chunks: List[Dict[str, object]], api_key: str, model: str = "gemini-2.5-flash") -> str:
     """Send retrieved chunks + query to Gemini and return the generated answer."""
     import google.generativeai as genai
 

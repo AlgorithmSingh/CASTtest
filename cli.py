@@ -52,7 +52,7 @@ def build_parser() -> argparse.ArgumentParser:
     ask.add_argument("--json", action="store_true", help="Emit JSON output")
     ask.add_argument("--answer", action="store_true", help="Generate an answer using Gemini")
     ask.add_argument("--gemini-key", default=None, help="Gemini API key (or set GEMINI_API_KEY env var)")
-    ask.add_argument("--model", default="gemini-2.0-flash", help="Gemini model to use (default: gemini-2.0-flash)")
+    ask.add_argument("--model", default="gemini-2.5-flash", help="Gemini model to use (default: gemini-2.5-flash)")
     ask.set_defaults(func=cmd_ask)
     return parser
 

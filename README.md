@@ -141,3 +141,9 @@ Hybrid search: FAISS vector + BM25 keyword, fused with RRF
 - `sentence-transformers` — Local embeddings (all-MiniLM-L6-v2, 384-dim)
 - `faiss-cpu` — Vector similarity search (HNSW index)
 - `google-generativeai` — Gemini answer generation (optional, needs API key)
+
+
+uv run python main.py ask --index streamlit --query "how does streamlit run work?" 
+
+export GEMINI_API_KEY=...
+uv run cast-rag ask --index streamlit --query "how does streamlit run work?" --answer
