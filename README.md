@@ -17,18 +17,34 @@ uv sync
 
 ## CLI usage
 
+After `uv sync`, the `cast-rag` command is available:
+
+```bash
+cast-rag --help
+```
+
+> If you're outside the virtualenv, prefix with `uv run`:
+> ```bash
+> uv run cast-rag --help
+> ```
+>
+> Or use `python main.py` directly:
+> ```bash
+> uv run python main.py --help
+> ```
+
 ### Ingest a repository
 
 From a git URL (clones automatically):
 
 ```bash
-uv run python main.py ingest https://github.com/user/repo.git
+cast-rag ingest https://github.com/user/repo.git
 ```
 
 From a local path:
 
 ```bash
-uv run python main.py ingest /path/to/local/repo --name my-project
+cast-rag ingest /path/to/local/repo --name my-project
 ```
 
 Options:
@@ -38,42 +54,42 @@ Options:
 ### Query a saved index (hybrid search)
 
 ```bash
-uv run python main.py ask --index my-project --query "how does authentication work"
+cast-rag ask --index my-project --query "how does authentication work"
 ```
 
 ### Query a local repo directly (BM25 only, no index saved)
 
 ```bash
-uv run python main.py ask --repo /path/to/repo --query "how is auth signature verified"
+cast-rag ask --repo /path/to/repo --query "how is auth signature verified"
 ```
 
 ### Generate an answer with Gemini
 
 ```bash
 export GEMINI_API_KEY=your-key-here
-uv run python main.py ask --index my-project --query "how does caching work" --answer
+cast-rag ask --index my-project --query "how does caching work" --answer
 ```
 
 Or pass the key directly:
 
 ```bash
-uv run python main.py ask --index my-project --query "how does caching work" --answer --gemini-key YOUR_KEY
+cast-rag ask --index my-project --query "how does caching work" --answer --gemini-key YOUR_KEY
 ```
 
 ### Manage indexes
 
 ```bash
 # List all saved indexes
-uv run python main.py list
+cast-rag list
 
 # Delete an index
-uv run python main.py delete my-project
+cast-rag delete my-project
 ```
 
 ### Run the built-in experiment
 
 ```bash
-uv run python main.py experiment
+cast-rag experiment
 ```
 
 ### JSON output
@@ -81,7 +97,7 @@ uv run python main.py experiment
 Add `--json` to any `ask` command:
 
 ```bash
-uv run python main.py ask --index my-project --query "cache embeddings" --json
+cast-rag ask --index my-project --query "cache embeddings" --json
 ```
 
 ## Architecture
