@@ -50,3 +50,8 @@ uv run python -m cli ask --repo /path/to/repo --query "cache embeddings" --strat
 - `cast_rag.py` — chunkers, repository loader, BM25 retrieval, experiment helpers.
 - `test_cast_rag.py` — unit tests including repository query flow.
 - `pyproject.toml` — project metadata and script entrypoint.
+
+## Notes for contributors
+
+- This project intentionally keeps runtime dependencies empty.
+- `uv.lock` is not required for execution here; use `uv sync` to create/update a local environment as needed.
