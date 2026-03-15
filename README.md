@@ -42,7 +42,6 @@ uv run python -m cli ask --repo /path/to/repo --query "cache embeddings" --strat
 ## Files
 
 - `cli.py` — CLI implementation (`experiment` and `ask` commands).
-- `main.py` — tiny wrapper that calls `cli.main()` for compatibility.
 - `cast_rag.py` — chunkers, repository loader, BM25 retrieval, experiment helpers.
 - `test_cast_rag.py` — unit tests including repository query flow.
 - `pyproject.toml` — project metadata and script entrypoint.
