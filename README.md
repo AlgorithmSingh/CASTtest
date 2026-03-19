@@ -1,10 +1,10 @@
 # cAST-style repository RAG CLI
 
-A code retrieval-augmented generation tool that uses **AST-aware chunking** and **hybrid search** (FAISS vector + BM25 + RRF fusion) to answer questions about any codebase.
+A code retrieval-augmented generation tool that uses **AST-aware chunking**, an **RLM-inspired recursive repository search**, and **hybrid search** (FAISS vector + BM25 + RRF fusion) to answer questions about any codebase.
 
 ## How it works
 
-1. **Ingest** — Clone a repo (or point to a local one), chunk source files using cAST (AST split-then-merge for Python, line-based fallback for other languages), embed chunks with `all-MiniLM-L6-v2`, and save a FAISS HNSW index to disk.
+1. **Ingest** — Clone a repo (or point to a local one), chunk source files using cAST (AST split-then-merge for Python), fixed windows, or an RLM-inspired recursive decomposition that treats files as an external environment, embed chunks with `all-MiniLM-L6-v2`, and save a FAISS HNSW index to disk.
 2. **Ask** — Load a saved index and run hybrid retrieval: FAISS vector similarity + BM25 keyword search, fused with Reciprocal Rank Fusion (RRF). Optionally generate an answer with Gemini.
 
 No compilation or build step is needed — AST parsing reads raw source text directly.
@@ -49,7 +49,7 @@ cast-rag ingest /path/to/local/repo --name my-project
 
 Options:
 - `--name` — Custom index name (default: derived from URL/path)
-- `--strategy` — `cast` (default) or `fixed`
+- `--strategy` — `cast` (default), `fixed`, or `rlm`
 
 ### Query a saved index (hybrid search)
 
@@ -60,7 +60,7 @@ cast-rag ask --index my-project --query "how does authentication work"
 ### Query a local repo directly (BM25 only, no index saved)
 
 ```bash
-cast-rag ask --repo /path/to/repo --query "how is auth signature verified"
+cast-rag ask --repo /path/to/repo --query "how is auth signature verified" --strategy rlm
 ```
 
 ### Generate an answer with Gemini
@@ -112,7 +112,7 @@ git clone (if URL)
 load_repository() — walk files, filter by extension
     |
     v
-CastChunker (Python: AST split-then-merge) / FixedChunker (line-based)
+CastChunker (Python: AST split-then-merge) / RecursiveChunker (RLM-inspired file metadata + recursive AST descent) / FixedChunker (line-based)
     |
     v
 all-MiniLM-L6-v2 embeddings (local, no API key)
@@ -129,7 +129,8 @@ Hybrid search: FAISS vector + BM25 keyword, fused with RRF
 
 ## Files
 
-- `cast_rag.py` — Chunkers, repository loader, BM25 retrieval, ingest/query pipeline, Gemini answer generation.
+- `repo_rag/` — Shared package containing chunkers, repository loader, BM25 retrieval, the new RLM-inspired recursive search, and ingest/query pipeline.
+- `cast_rag.py` — Backwards-compatible re-export layer.
 - `vector_store.py` — FAISS HNSW index, sentence-transformers embeddings, hybrid RRF search.
 - `cli.py` — CLI commands: `ingest`, `ask`, `list`, `delete`, `experiment`.
 - `main.py` — Entrypoint that delegates to `cli.main()`.

@@ -19,7 +19,7 @@ from cast_rag import (
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run cAST-style repository RAG retrieval")
+    parser = argparse.ArgumentParser(description="Run repository RAG retrieval with cAST and RLM-inspired strategies")
     sub = parser.add_subparsers(dest="command", required=True)
 
     exp = sub.add_parser("experiment", help="Run built-in synthetic experiment")
@@ -29,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     ing = sub.add_parser("ingest", help="Clone/read a repo, chunk it, embed it, and save a FAISS index")
     ing.add_argument("source", help="Git URL (https/ssh) or path to a local repository")
     ing.add_argument("--name", default=None, help="Index name (default: derived from repo URL/path)")
-    ing.add_argument("--strategy", choices=["cast", "fixed"], default="cast", help="Chunking strategy")
+    ing.add_argument("--strategy", choices=["cast", "fixed", "rlm"], default="cast", help="Chunking strategy")
     ing.set_defaults(func=cmd_ingest)
 
     # --- list command ---
@@ -47,7 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--repo", help="Path to local repository (ephemeral BM25-only search)")
     group.add_argument("--index", help="Name of a previously ingested index (hybrid vector+BM25 search)")
     ask.add_argument("--query", required=True, help="Natural language retrieval query")
-    ask.add_argument("--strategy", choices=["cast", "fixed"], default="cast", help="Chunking strategy (only for --repo)")
+    ask.add_argument("--strategy", choices=["cast", "fixed", "rlm"], default="cast", help="Chunking strategy (only for --repo)")
     ask.add_argument("--top-k", type=int, default=5, help="Number of chunks to return")
     ask.add_argument("--json", action="store_true", help="Emit JSON output")
     ask.add_argument("--answer", action="store_true", help="Generate an answer using Gemini")
@@ -136,7 +136,7 @@ def cmd_ask(args: argparse.Namespace) -> int:
         print(json.dumps(result, indent=2))
         return 0
 
-    header = "CAST RAG"
+    header = "REPO RAG"
     if args.index:
         header += f" (index: {args.index}, hybrid search)"
     print(f"=== {header} ===")
